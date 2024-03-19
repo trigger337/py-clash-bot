@@ -1,4 +1,5 @@
 from pyclashbot.emulator.base import BaseEmulatorController
+from pyclashbot.emulator.memu.launcher import check_for_vm
 from pyclashbot.emulator.memu.screenshot import screen_shotter
 from pyclashbot.emulator.memu.client import send_click, send_swipe
 from pyclashbot.emulator.memu.configure import configure_vm
@@ -9,8 +10,8 @@ class MemuEmulatorController(BaseEmulatorController):
     Class for controlling a MEmu emulator.
     """
 
-    def __init__(self, vm_index: int):
-        self.vm_index = vm_index
+    def __init__(self, vm_index: int | None = None):
+        self.vm_index = vm_index if vm_index is not None else check_for_vm()
         super().__init__()
 
     def create(self):
