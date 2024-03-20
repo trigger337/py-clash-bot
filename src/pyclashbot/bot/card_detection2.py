@@ -4,7 +4,7 @@ import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pyclashbot.detection.image_rec import pixel_is_equal
 
-from pyclashbot.memu.client import screenshot
+from pyclashbot.emulator.base import BaseEmulatorController
 
 CARD_PIXEL_DATA_DICT = {
     # checked
@@ -1403,8 +1403,8 @@ PLAY_COORDS = {
 }
 
 
-def get_play_coords_for_card(vm_index, card_index, side_preference):
-    card_data = get_all_card_pixel_data(vm_index)[card_index]
+def get_play_coords_for_card(controller:BaseEmulatorController, card_index, side_preference):
+    card_data = get_all_card_pixel_data(controller)[card_index]
 
     # get the ID of this card(ram_rider, zap, etc)
     identity = identify_card(card_data)
@@ -1491,8 +1491,8 @@ def calculate_play_coords(card_grouping: str, side_preference: str):
     return (random.randint(210, 351), random.randint(281, 456))
 
 
-def get_all_card_pixel_data(vm_index):
-    iar = screenshot(vm_index)
+def get_all_card_pixel_data(controller:BaseEmulatorController):
+    iar = controller.screenshot()
     base_coord_list = [
         [121, 537],
         [130, 547],
@@ -1546,12 +1546,3 @@ def identify_card(card_data):
                 return result
         return "unknown"
 
-
-if __name__ == "__main__":
-    # right tower arrows = 292,146
-    # left tower arrows = 116,149
-
-    coord = ()
-    from pyclashbot.memu.client import click
-
-    click(12, coord[0], coord[1])

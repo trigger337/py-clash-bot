@@ -10,7 +10,8 @@ from pyclashbot.detection.image_rec import (
     get_first_location,
     pixel_is_equal,
 )
-from pyclashbot.detection.image_rec import screenshot
+from pyclashbot.emulator.base import BaseEmulatorController
+
 
 DOT_RADIUS = 5
 ENEMY_TROOP_IMAGE_REC_TOLERANCE = 0.98
@@ -50,12 +51,12 @@ def add_dot(active_dots, location, lifespan, color):
     active_dots.append({"location": location, "lifespan": lifespan, "color": color})
 
 
-def find_enemy_troops(vm_index):
+def find_enemy_troops(controller: BaseEmulatorController):
     folder = "enemy_troop_icon"
 
     names = make_reference_image_list(get_file_count(folder))
     locations: list[list[int] | None] = find_references(
-        screenshot(vm_index),
+        controller.screenshot(),
         folder,
         names,
         tolerance=ENEMY_TROOP_IMAGE_REC_TOLERANCE,
@@ -161,10 +162,10 @@ def classify_coordinate(iar, coord):
     return "blue"
 
 
-def classify_locations(vm_index, locations):
+def classify_locations(controller: BaseEmulatorController, locations):
     import numpy
 
-    iar = numpy.asarray(screenshot(vm_index))
+    iar = controller.screenshot()
 
     if locations is None:
         return None
@@ -177,7 +178,7 @@ def classify_locations(vm_index, locations):
     return classified_locations
 
 
-def troop_visualizer_thread(vm_index):
+def troop_visualizer_thread(controller: BaseEmulatorController):
     # Initialize Pygame
     pygame.init()
 
@@ -199,8 +200,8 @@ def troop_visualizer_thread(vm_index):
                 pygame.quit()
                 exit()
 
-        locations = remove_trash_coords(find_enemy_troops(vm_index))
-        locations_with_color = classify_locations(vm_index, locations)
+        locations = remove_trash_coords(find_enemy_troops(controller))
+        locations_with_color = classify_locations(controller, locations)
         if locations is not None:
             # print(locations_with_color)
             for location_with_color in locations_with_color:
@@ -222,11 +223,11 @@ def troop_visualizer_thread(vm_index):
         clock.tick(60)  # Limit frames per second
 
 
-def choose_play_side(logger, vm_index) -> str:
+def choose_play_side(logger, controller: BaseEmulatorController) -> str:
     timeout = 1.33  # s
     start_time = time.time()
     while time.time() - start_time < timeout:
-        locations = remove_trash_coords(find_enemy_troops(vm_index))
+        locations = remove_trash_coords(find_enemy_troops(controller))
         # locations = classify_locations(vm_index, locations)
         # locations = remove_blue_locations(locations)
 
@@ -265,10 +266,3 @@ def choose_play_side(logger, vm_index) -> str:
         f"Choosing right side: {left_count}L | {right_count}R {str(time.time() - start_time)[:5]}s"
     )
     return "right"
-
-
-if __name__ == "__main__":
-    troop_visualizer_thread(12)
-    # from pyclashbot.utils.logger import Logger
-    # while 1:
-    # (choose_play_side(Logger(None,None),12))

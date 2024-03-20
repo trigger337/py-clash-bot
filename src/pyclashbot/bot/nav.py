@@ -2,7 +2,6 @@ import random
 import time
 from typing import Literal
 
-import numpy
 
 from pyclashbot.detection.image_rec import (
     check_line_for_color,
@@ -10,7 +9,6 @@ from pyclashbot.detection.image_rec import (
     region_is_color,
 )
 from pyclashbot.emulator.base import BaseEmulatorController
-from pyclashbot.memu.client import click, screenshot, scroll_up, scroll_down
 from pyclashbot.utils.logger import Logger
 from pyclashbot.detection.image_rec import (
     make_reference_image_list,
@@ -20,9 +18,9 @@ from pyclashbot.detection.image_rec import (
 )
 
 _2V2_START_WAIT_TIMEOUT = 120  # s
-CLAN_TAB_BUTTON_COORDS_FROM_MAIN = [315, 597]
-PROFILE_PAGE_COORD = [88, 93]
-CLASH_MAIN_COORD_FROM_CLAN_PAGE = [178, 593]
+CLAN_TAB_BUTTON_COORDS_FROM_MAIN = (315, 597)
+PROFILE_PAGE_COORD = (88, 93)
+CLASH_MAIN_COORD_FROM_CLAN_PAGE = (178, 593)
 CLASH_MAIN_OPTIONS_BURGER_BUTTON = (390, 62)
 BATTLE_LOG_BUTTON = (241, 43)
 CARD_PAGE_ICON_FROM_CLASH_MAIN = (108, 598)
@@ -34,12 +32,12 @@ CLASH_MAIN_MENU_DEADSPACE_COORD = (32, 450)
 OPEN_WAR_CHEST_BUTTON_COORD = (188, 415)
 OPENING_WAR_CHEST_DEADZONE_COORD = (5, 298)
 CLASH_MAIN_WAIT_TIMEOUT = 240  # s
-SHOP_PAGE_BUTTON: tuple[Literal[33], Literal[603]] = (33, 603)
+SHOP_PAGE_BUTTON = (33, 603)
 
 
-def get_to_shop_page_from_clash_main(vm_index, logger):
-    click(vm_index, SHOP_PAGE_BUTTON[0], SHOP_PAGE_BUTTON[1])
-    if wait_for_clash_main_shop_page(vm_index, logger) == "restart":
+def get_to_shop_page_from_clash_main(controller:BaseEmulatorController, logger):
+    controller.click(SHOP_PAGE_BUTTON)
+    if wait_for_clash_main_shop_page(controller, logger) == "restart":
         logger.change_status(
             status="Error 085708235 Failure waiting for clash main shop page "
         )
@@ -47,20 +45,7 @@ def get_to_shop_page_from_clash_main(vm_index, logger):
     return True
 
 
-def wait_for_2v2_battle_start(vm_index, logger: Logger) -> Literal["restart", "good"]:
-    """
-    Waits for the 2v2 battle to start.
-
-    Args:
-        vm_index (int): The index of the virtual machine.
-        logger (Logger): The logger object.
-        printmode (bool, optional): Whether to print the status. Defaults to False.
-
-    Returns:
-        Literal["restart", "good"]: "restart" if the function
-        needs to be restarted, "good" otherwise.
-    """
-
+def wait_for_2v2_battle_start(controller:BaseEmulatorController, logger: Logger) -> bool:
     _2v2_start_wait_start_time = time.time()
 
     while time.time() - _2v2_start_wait_start_time < _2V2_START_WAIT_TIMEOUT:
@@ -69,12 +54,12 @@ def wait_for_2v2_battle_start(vm_index, logger: Logger) -> Literal["restart", "g
             status=f"Waiting for 2v2 battle to start for {time_taken}s"
         )
 
-        if check_if_in_battle(vm_index=vm_index):
+        if check_if_in_battle(controller):
             logger.change_status("Detected an ongoing 2v2 battle!")
             return True
 
         if random.randint(0, 2) == 1:
-            click(vm_index=vm_index, x_coord=20, y_coord=200)
+            controller.click((20,200))
 
         time.sleep(1)
 
@@ -82,26 +67,14 @@ def wait_for_2v2_battle_start(vm_index, logger: Logger) -> Literal["restart", "g
 
 
 def wait_for_1v1_battle_start(
-    vm_index, logger: Logger, printmode=False
+    controller:BaseEmulatorController, logger: Logger, printmode=False
 ) -> Literal["restart", "good"]:
-    """
-    Waits for the 1v1 battle to start.
-
-    Args:
-        vm_index (int): The index of the virtual machine.
-        logger (Logger): The logger object.
-        printmode (bool, optional): Whether to print the status. Defaults to False.
-
-    Returns:
-        Literal["restart", "good"]: "restart" if the function
-        needs to be restarted, "good" otherwise.
-    """
     start_time: float = time.time()
     if printmode:
         logger.change_status(status="Waiting for 1v1 battle to start")
     else:
         logger.log(message="Waiting for 1v1 battle to start")
-    while not check_if_in_battle(vm_index=vm_index):
+    while not check_if_in_battle(controller):
         time_taken: float = time.time() - start_time
         if time_taken > 60:
             logger.change_status(
@@ -110,7 +83,7 @@ def wait_for_1v1_battle_start(
             return "restart"
         print("Waiting for 1v1 start")
         if random.randint(1, 3) == 3:
-            click(vm_index=vm_index, x_coord=200, y_coord=200)
+            controller.click( (200,200))
 
     if printmode:
         logger.change_status(status="Done waiting for 1v1 battle to start")
@@ -119,7 +92,7 @@ def wait_for_1v1_battle_start(
     return "good"
 
 
-def check_for_in_battle_with_delay(vm_index):
+def check_for_in_battle_with_delay(controller:BaseEmulatorController):
     """
     Checks if the virtual machine is in a 2v2 battle with a delay.
 
@@ -132,22 +105,13 @@ def check_for_in_battle_with_delay(vm_index):
     timeout = 3  # s
     start_time = time.time()
     while time.time() - start_time < timeout:
-        if check_if_in_battle(vm_index):
+        if check_if_in_battle(controller):
             return True
     return False
 
 
-def check_if_in_battle(vm_index) -> bool:
-    """
-    Checks if the virtual machine is in a 2v2 battle.
-
-    Args:
-        vm_index (int): The index of the virtual machine.
-
-    Returns:
-        bool: True if the virtual machine is in a 2v2 battle, False otherwise.
-    """
-    iar = numpy.asarray(screenshot(vm_index))
+def check_if_in_battle(controller:BaseEmulatorController) -> bool:
+    iar = controller.screenshot()
 
     pixels = [
         iar[517][56],
@@ -182,8 +146,8 @@ def get_to_clash_main_from_clan_page(
         logger.change_status(status="Clicking clash main icon")
     else:
         logger.log(message="Clicking clash main icon")
-    click(
-        vm_index, CLASH_MAIN_COORD_FROM_CLAN_PAGE[0], CLASH_MAIN_COORD_FROM_CLAN_PAGE[1]
+    controller.click(
+     CLASH_MAIN_COORD_FROM_CLAN_PAGE
     )
 
     # wait for clash main menu
@@ -191,7 +155,7 @@ def get_to_clash_main_from_clan_page(
         logger.change_status(status="Waiting for clash main")
     else:
         logger.log("Waiting for clash main")
-    if wait_for_clash_main_menu(vm_index, logger) is False:
+    if wait_for_clash_main_menu(controller, logger) is False:
         logger.change_status(status="Error 3253, failure waiting for clash main")
         return "restart"
     return "good"
@@ -297,8 +261,8 @@ def get_to_clan_tab_from_clash_main(
 
         if random.randint(0, 1) == 1:
             if random.randint(1, 3) == 1:
-                controller.scroll_up()
-                controller.scroll_down()
+                controller.swipe( (215, 300), (215, 400))
+                controller.swipe( (215, 400), (215, 300))
                 time.sleep(2)
                 continue
 
@@ -323,7 +287,7 @@ def handle_war_popup_pages(controller:BaseEmulatorController, logger):
     while time.time() - start_time < timeout:
         if check_for_battle_day_results_page(controller):
             print("Found battle_day_results page")
-            click(( 233, 196))
+            controller.click(( 233, 196))
             time.sleep(1)
             return True
 
@@ -594,7 +558,7 @@ def get_to_profile_page(controller:BaseEmulatorController, logger: Logger) -> Li
         return "restart"
 
     # click profile button
-    controller.click( PROFILE_PAGE_COORD[0])
+    controller.click( PROFILE_PAGE_COORD)
 
     # wait for profile page
     if wait_for_profile_page(controller, logger, printmode=False) == "restart":
@@ -790,7 +754,7 @@ def get_to_card_page_from_clash_main(
     time.sleep(2.5)
 
     # while not on the card page, cycle the card page
-    while not check_if_on_card_page(controller=):
+    while not check_if_on_card_page(controller):
         time_taken = time.time() - start_time
         if time_taken > 60:
             return "restart"
@@ -909,7 +873,7 @@ def check_if_on_card_page(controller: BaseEmulatorController,) -> bool:
     return True
 
 
-def get_to_challenges_tab_from_main(vm_index, logger) -> Literal["restart", "good"]:
+def get_to_challenges_tab_from_main(controller:BaseEmulatorController, logger) -> Literal["restart", "good"]:
     """
     Clicks on the challenges tab in the Clash Main menu to navigate to the challenges tab.
 
@@ -921,12 +885,10 @@ def get_to_challenges_tab_from_main(vm_index, logger) -> Literal["restart", "goo
         Literal["restart", "good"]: "restart" if an error occurred and the VM needs to be restarted,
         "good" otherwise.
     """
-    click(
-        vm_index,
-        CHALLENGES_TAB_ICON_FROM_CLASH_MAIN[0],
-        CHALLENGES_TAB_ICON_FROM_CLASH_MAIN[1],
+    controller.click(
+        CHALLENGES_TAB_ICON_FROM_CLASH_MAIN
     )
-    if wait_for_clash_main_challenges_tab(vm_index, logger) == "restart":
+    if wait_for_clash_main_challenges_tab(controller, logger) == "restart":
         logger.change_status(
             status="Error 892572938 waited for challenges tab too long, restarting vm"
         )
@@ -936,18 +898,7 @@ def get_to_challenges_tab_from_main(vm_index, logger) -> Literal["restart", "goo
 
 def handle_clash_main_tab_notifications(
     controller:BaseEmulatorController, logger: Logger
-) -> Literal["restart", "good"]:
-    """
-    Clicks on the card, shop, and challenges tabs in the Clash Main menu to handle notifications.
-
-    Args:
-        vm_index (int): The index of the virtual machine to perform the clicks on.
-        logger (Logger): The logger object to log messages to.
-
-    Returns:
-        Literal["restart", "good"]: "restart" if an error occurred and the VM needs to be restarted,
-        "good" otherwise.
-    """
+) -> bool:
     start_time: float = time.time()
 
     # wait for clash main to appear

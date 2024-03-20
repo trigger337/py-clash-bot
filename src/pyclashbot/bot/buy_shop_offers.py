@@ -1,5 +1,4 @@
 import time
-import numpy
 
 from pyclashbot.bot.nav import (
     check_if_on_clash_main_menu,
@@ -12,11 +11,8 @@ from pyclashbot.detection.image_rec import (
     make_reference_image_list,
     pixel_is_equal,
 )
-from pyclashbot.memu.client import (
-    screenshot,
-    click,
-    scroll_down_slowly_in_shop_page,
-)
+from pyclashbot.emulator.base import BaseEmulatorController
+
 
 from pyclashbot.utils.logger import Logger
 
@@ -24,7 +20,7 @@ SHOP_BUY_TIMEOUT = 35
 
 
 def buy_shop_offers_state(
-    vm_index: int,
+    controller: BaseEmulatorController,
     logger: Logger,
     gold_buy_toggle: bool,
     free_offers_toggle: bool,
@@ -37,7 +33,7 @@ def buy_shop_offers_state(
     logger.add_shop_buy_attempt()
 
     # if not on clash main, return False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status(
             "Not on clash main to being buying offers. Returning restart"
         )
@@ -45,7 +41,7 @@ def buy_shop_offers_state(
 
     if (
         buy_shop_offers_main(
-            vm_index,
+            controller,
             logger,
             gold_buy_toggle,
             free_offers_toggle,
@@ -58,7 +54,7 @@ def buy_shop_offers_state(
     time.sleep(3)
 
     # if not on clash main, return False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status("Not on clash main after buying offers. Returning restart")
         return "restart"
 
@@ -66,14 +62,14 @@ def buy_shop_offers_state(
 
 
 def buy_shop_offers_main(
-    vm_index: int,
+    controller: BaseEmulatorController,
     logger: Logger,
     gold_buy_toggle: bool,
     free_offers_toggle: bool,
 ) -> bool:
     # get to shop page
     logger.change_status("Getting to shop page to buy offers")
-    if get_to_shop_page_from_clash_main(vm_index, logger) is False:
+    if get_to_shop_page_from_clash_main(controller, logger) is False:
         logger.change_status("Failed to get to shop page to buy offers")
         return False
 
@@ -91,13 +87,13 @@ def buy_shop_offers_main(
         # scroll a little
         logger.change_status("Searching for offers to buy")
         print("Time taken in shop: ", str(time.time() - start_time)[:5])
-        scroll_down_slowly_in_shop_page(vm_index)
+        controller.swipe((66, 400), (66, 350))
         time.sleep(1)
 
         if gold_buy_toggle or free_offers_toggle:
             while (
                 buy_offers_from_this_shop_page(
-                    vm_index, logger, gold_buy_toggle, free_offers_toggle
+                    controller, logger, gold_buy_toggle, free_offers_toggle
                 )
                 is True
                 and done_buying is False
@@ -128,20 +124,22 @@ def buy_shop_offers_main(
     logger.change_status("Done buying offers. Returning to clash main")
 
     # get to clash main from shop page
-    click(vm_index, 245, 596)
+    controller.click((245, 596))
     time.sleep(4)
 
     return True
 
 
-def search_for_free_purchases(vm_index):
+def search_for_free_purchases(
+    controller: BaseEmulatorController,
+):
     """method to find the free offer icon image in the shop pages"""
 
     folder_name = "free_offer_icon"
     size = get_file_count(folder_name)
     names = make_reference_image_list(size)
     locations = find_references(
-        screenshot(vm_index),
+        controller.screenshot(),
         folder_name,
         names,
         0.9,
@@ -152,14 +150,16 @@ def search_for_free_purchases(vm_index):
     return [coord[1], coord[0]]
 
 
-def search_for_gold_purchases(vm_index):
+def search_for_gold_purchases(
+    controller: BaseEmulatorController,
+):
     """method to find the offers for gold icon image in the shop pages"""
 
     folder_name = "offers_for_gold"
     size = get_file_count(folder_name)
     names = make_reference_image_list(size)
     locations = find_references(
-        screenshot(vm_index),
+        controller.screenshot(),
         folder_name,
         names,
         0.9,
@@ -171,40 +171,42 @@ def search_for_gold_purchases(vm_index):
 
 
 def buy_offers_from_this_shop_page(
-    vm_index, logger, gold_buy_toggle, free_offers_toggle
+    controller: BaseEmulatorController, logger, gold_buy_toggle, free_offers_toggle
 ):
     coord = None
 
     if gold_buy_toggle:
-        coord = search_for_gold_purchases(vm_index)
+        coord = search_for_gold_purchases(controller)
 
     # if no gold purchases, find a free purchase
     if coord is None and free_offers_toggle:
-        coord = search_for_free_purchases(vm_index)
+        coord = search_for_free_purchases(controller)
 
     # if there are no purchases at this point, return False
     if coord is None:
         return False
 
     # click the location of the 'cards for gold' icon
-    click(vm_index, coord[0], coord[1])
+    controller.click(coord)
     time.sleep(2)
 
     # click the second 'buy' button
-    click(vm_index, 200, 433)
-    click(vm_index, 204, 394)
+    controller.click((200, 433))
+    controller.click((204, 394))
     logger.add_shop_offer_collection()
     time.sleep(2)
 
     # click deadspace to close this offer
-    while not check_if_on_shop_page(vm_index):
-        click(vm_index, 15, 200)
+    while not check_if_on_shop_page(controller):
+        controller.click((15, 200))
 
     return True
 
 
-def check_if_on_shop_page(vm_index):
-    iar = numpy.asarray(screenshot(vm_index))
+def check_if_on_shop_page(
+    controller: BaseEmulatorController,
+):
+    iar = controller.screenshot()
 
     pixels = [
         iar[582][19],
@@ -222,23 +224,3 @@ def check_if_on_shop_page(vm_index):
         if not pixel_is_equal(colors[i], p, tol=10):
             return False
     return True
-
-
-def shop_buy_tester():
-    vm_index = 12
-    logger = Logger(None, None)
-    gold_buy_toggle = True
-    free_offers_toggle = True
-
-    print(
-        buy_shop_offers_main(
-            vm_index,
-            logger,
-            gold_buy_toggle,
-            free_offers_toggle,
-        )
-    )
-
-
-if __name__ == "__main__":
-    shop_buy_tester()

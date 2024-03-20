@@ -8,34 +8,38 @@ from pyclashbot.bot.nav import (
     get_to_card_page_from_clash_main,
 )
 from pyclashbot.detection.image_rec import pixel_is_equal
-from pyclashbot.memu.client import click
 from pyclashbot.utils.logger import Logger
+from pyclashbot.emulator.base import BaseEmulatorController
 
 
 CARD_PAGE_ICON_FROM_CLASH_MAIN: tuple[Literal[115], Literal[600]] = (115, 600)
 
 
-def randomize_deck_state(vm_index: int, logger: Logger, next_state: str):
+def randomize_deck_state(
+    controller: BaseEmulatorController, logger: Logger, next_state: str
+):
     # increment job count
     logger.add_randomize_deck_attempt()
 
     # if not on clash main, return 'restart'
-    if check_if_on_clash_main_menu(vm_index) is False:
+    if check_if_on_clash_main_menu(controller) is False:
         logger.change_status(
             "Not on clash main for randomize_deck_state(). Returning restart!"
         )
         return "restart"
 
     logger.change_status("Randomizing deck #2")
-    if randomize_deck(vm_index, logger) is False:
+    if randomize_deck(controller, logger) is False:
         logger.change_status("Failed somewhere in randomize_deck(). Returning restart!")
         return "restart"
 
     return next_state
 
 
-def check_for_underleveled_deck_options_location(vm_index):
-    iar = numpy.asarray(screenshot(vm_index))
+def check_for_underleveled_deck_options_location(
+    controller: BaseEmulatorController,
+):
+    iar = controller.screenshot()
     pixels = [
         iar[431][346],
         iar[437][360],
@@ -63,25 +67,31 @@ def check_for_underleveled_deck_options_location(vm_index):
     return True
 
 
-def click_deck_options(vm_index):
-    if check_for_underleveled_deck_options_location(vm_index):
+def click_deck_options(
+    controller: BaseEmulatorController,
+):
+    if check_for_underleveled_deck_options_location(controller):
         print("Detected underleveled deck options location. Clicking...")
-        click(vm_index, 366, 444)
+        controller.click((366, 444))
     else:
-        click(vm_index, 354, 480)
+        controller.click((354, 480))
 
 
-def click_delete_deck_button(vm_index):
-    if check_for_underleveled_delete_deck_button_location(vm_index):
+def click_delete_deck_button(
+    controller: BaseEmulatorController,
+):
+    if check_for_underleveled_delete_deck_button_location(controller):
         print("Detected underleveled delete deck button location. Clicking...")
-        click(vm_index, 297, 276)
+        controller.click((297, 276))
 
     else:
-        click(vm_index, 291, 305)
+        controller.click((291, 305))
 
 
-def check_for_underleveled_delete_deck_button_location(vm_index):
-    iar = numpy.asarray(screenshot(vm_index))
+def check_for_underleveled_delete_deck_button_location(
+    controller: BaseEmulatorController,
+):
+    iar = controller.screenshot()
     pixels = [
         iar[266][257],
         iar[270][287],
@@ -111,8 +121,10 @@ def check_for_underleveled_delete_deck_button_location(vm_index):
     return True
 
 
-def check_for_randomize_deck_icon(vm_index):
-    iar = numpy.asarray(screenshot(vm_index))
+def check_for_randomize_deck_icon(
+    controller: BaseEmulatorController,
+):
+    iar = controller.screenshot()
     pixels = [
         iar[219][260],
         iar[237][251],
@@ -142,31 +154,31 @@ def check_for_randomize_deck_icon(vm_index):
     return True
 
 
-def randomize_deck(vm_index: int, logger: Logger) -> bool:
+def randomize_deck(controller: BaseEmulatorController, logger: Logger) -> bool:
     # get to card page
-    if get_to_card_page_from_clash_main(vm_index, logger) is False:
+    if get_to_card_page_from_clash_main(controller, logger) is False:
         logger.change_status("Failed to get to card page from main. Returning False")
         return False
 
     # click on deck 2
     logger.change_status("Deleting deck 2...")
-    click(vm_index, 109, 123)
+    controller.click((109, 123))
 
     # click on deck options
     print("Click deck options")
-    click_deck_options(vm_index)
+    click_deck_options(controller)
     time.sleep(1)
 
-    if check_for_randomize_deck_icon(vm_index):
+    if check_for_randomize_deck_icon(controller):
         print("Doing the underleveled method for deck randomization")
 
         # click randomize
-        click(vm_index, 298, 229)
+        controller.click((298, 229))
         time.sleep(0.33)
 
         # click OK
         print("Clicking OK")
-        click(vm_index, 283, 387)
+        controller.click((283, 387))
         time.sleep(0.33)
 
     else:
@@ -174,28 +186,28 @@ def randomize_deck(vm_index: int, logger: Logger) -> bool:
 
         # click delete deck
         print("Clicking delete")
-        click_delete_deck_button(vm_index)
+        click_delete_deck_button(controller)
         time.sleep(0.33)
 
         # click OK
         print("Clicking OK")
-        click(vm_index, 283, 387)
+        controller.click((283, 387))
         time.sleep(0.33)
 
         # click empty card 1 slot
         logger.change_status("Randomizing deck 2...")
         print("Clicking empty card 1 slot")
-        click(vm_index, 81, 218)
+        controller.click((81, 218))
         time.sleep(4)
 
         # click randomize button
         print("Clicking randomize button")
-        click(vm_index, 262, 396)
-        wait_for_filled_deck(vm_index)
+        controller.click((262, 396))
+        wait_for_filled_deck(controller)
 
         # click OK
         print("Clicking OK to randomize")
-        click(vm_index, 211, 591)
+        controller.click((211, 591))
         time.sleep(2)
 
     # increment logger's deck randomization sta
@@ -203,11 +215,11 @@ def randomize_deck(vm_index: int, logger: Logger) -> bool:
 
     # get to clash main
     logger.change_status("Returning to clash main")
-    click(vm_index, 248, 603)
+    controller.click((248, 603))
     time.sleep(2)
 
     # if not on clash main, return false
-    if check_if_on_clash_main_menu(vm_index) is False:
+    if check_if_on_clash_main_menu(controller) is False:
         logger.change_status(
             "Failed to get to clash main after randomizing deck. Returning False"
         )
@@ -217,21 +229,21 @@ def randomize_deck(vm_index: int, logger: Logger) -> bool:
     return True
 
 
-import numpy
-from pyclashbot.memu.client import screenshot
-
-
-def wait_for_filled_deck(vm_index):
+def wait_for_filled_deck(
+    controller: BaseEmulatorController,
+):
     timeout = 20  # s
     start_time = time.time()
     while time.time() - start_time < timeout:
-        if check_for_filled_deck(vm_index):
+        if check_for_filled_deck(controller):
             return True
     return False
 
 
-def check_for_filled_deck(vm_index):
-    iar = numpy.asarray(screenshot(vm_index))
+def check_for_filled_deck(
+    controller: BaseEmulatorController,
+):
+    iar = controller.screenshot()
     pixels = [
         iar[144][168],
         iar[308][247],
@@ -249,7 +261,3 @@ def check_for_filled_deck(vm_index):
         if not pixel_is_equal(colors[i], p, tol=10):
             return False
     return True
-
-
-if __name__ == "__main__":
-    randomize_deck(12, Logger())

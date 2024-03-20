@@ -2,7 +2,7 @@ import random
 import math
 import numpy
 from pyclashbot.detection.image_rec import pixel_is_equal
-from pyclashbot.memu.client import screenshot
+from pyclashbot.emulator.base import BaseEmulatorController
 
 card_color_data = {
     # checked
@@ -938,8 +938,8 @@ def get_pixels_and_count(iar, topleft):
     return pixels
 
 
-def identify_hand_cards(vm_index):
-    iar = numpy.asarray(screenshot(vm_index))
+def identify_hand_cards(controller: BaseEmulatorController):
+    iar = controller.screenshot()
     top_lefts = [
         [114, 528],
         [181, 528],
@@ -1031,9 +1031,11 @@ def calculate_play_coords(card_grouping: str, side_preference: str):
     return (random.randint(210, 351), random.randint(281, 456))
 
 
-def get_play_coords_for_card(vm_index, card_index, side_preference):
+def get_play_coords_for_card(
+    controller: BaseEmulatorController, card_index, side_preference
+):
     # get the ID of this card(ram_rider, zap, etc)
-    identity = identify_hand_cards(vm_index)[card_index]
+    identity = identify_hand_cards(controller)[card_index]
 
     # get the grouping of this card (hog, turret, spell, etc)
     group = get_card_group(identity)
@@ -1044,8 +1046,8 @@ def get_play_coords_for_card(vm_index, card_index, side_preference):
     return identity, coords
 
 
-def check_which_cards_are_available(vm_index):
-    iar = numpy.asarray(screenshot(vm_index))
+def check_which_cards_are_available(controller: BaseEmulatorController):
+    iar = controller.screenshot()
 
     card_1_pixels = []
     card_2_pixels = []
@@ -1106,8 +1108,3 @@ def count_purple_colors_in_pixel_list(pixel_list):
             count += 1
 
     return count
-
-
-if __name__ == "__main__":
-    while 1:
-        print(check_which_cards_are_available(12))

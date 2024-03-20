@@ -2,6 +2,7 @@
 This module contains the base class for emulator controllers.
 """
 
+from typing import Literal
 import numpy as np
 
 
@@ -41,7 +42,7 @@ class BaseEmulatorController:
         """
         raise NotImplementedError
 
-    def click(self, position: tuple[int, int]):
+    def click(self, position: tuple[int, int], clicks: int = 1, interval: float = 0):
         """
         This method is used to click on the emulator screen.
         """
@@ -51,6 +52,8 @@ class BaseEmulatorController:
         self,
         start_position: tuple[int, int],
         end_position: tuple[int, int],
+        repeat: int = 1,
+        delay: float = 0,
     ):
         """
         This method is used to swipe on the emulator screen.
@@ -72,5 +75,11 @@ class BaseEmulatorController:
     def start_app(self, package_name: str):
         """
         This method is used to start an app on the emulator.
+        """
+        raise NotImplementedError
+
+    def stop_app(self, package_name: str):
+        """
+        This method is used to stop an app on the emulator.
         """
         raise NotImplementedError

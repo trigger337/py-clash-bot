@@ -28,7 +28,7 @@ from pyclashbot.memu.launcher import (
 from pyclashbot.bot.buy_shop_offers import buy_shop_offers_state
 from pyclashbot.utils.logger import Logger
 from pyclashbot.bot.daily_challenge_collection import collect_daily_rewards_state
-from pyclashbot.memu.docker import start_memu_dock_mode
+# from pyclashbot.memu.docker import start_memu_dock_mode
 from pyclashbot.emulator.base import BaseEmulatorController
 
 def state_tree(
@@ -52,8 +52,8 @@ def state_tree(
             time.sleep(1)
 
     elif state == "start":  # --> account_switch
-        if job_list["memu_attach_mode_toggle"]:
-            start_memu_dock_mode()
+        # if job_list["memu_attach_mode_toggle"]:
+            # start_memu_dock_mode()
 
         logger.set_total_accounts(len(job_list["random_account_switch_list"]))
 
@@ -71,18 +71,9 @@ def state_tree(
 
         logger.log("Entered the restart state after a failure in another state...")
 
-        # print("Bot is in restart state. Press enter to continue!!!!!!")
-        # print("Bot is in restart state. Press enter to continue!!!!!!")
-        # print("Bot is in restart state. Press enter to continue!!!!!!")
-        # print("Bot is in restart state. Press enter to continue!!!!!!")
-        # print("Bot is in restart state. Press enter to continue!!!!!!")
-        # print("Bot is in restart state. Press enter to continue!!!!!!")
-        # print("Bot is in restart state. Press enter to continue!!!!!!")
-        # input()
-
         # close app
         logger.log("Running close_clash_royale_app()")
-        controller.close_app()
+        controller.stop_app("com.supercell.clashroyale")
         logger.log("Manual sleep of 10 sec after closing app")
         time.sleep(10)
 
@@ -91,12 +82,12 @@ def state_tree(
 
         # start app
         logger.log("Starting clash app again")
-        constroller.start_app()
+        controller.start_app("com.supercell.clashroyale")
 
         # wait for clash main
         logger.change_status("Waiting for clash royale main menu")
         logger.log("Running wait_for_clash_main_menu()")
-        if wait_for_clash_main_menu(vm_index, logger) is False:
+        if wait_for_clash_main_menu(controller, logger) is False:
             logger.log(
                 'Waited too long for clashmain in "restart". Recursively redoing restart state'
             )
@@ -134,7 +125,7 @@ def state_tree(
 
         if (
             switch_accounts(
-                vm_index, logger, job_list["random_account_switch_list"][accout_index]
+                controller, logger, job_list["random_account_switch_list"][accout_index]
             )
             is False
         ):
@@ -175,7 +166,7 @@ def state_tree(
 
         # run this state
         logger.log('Open chests is toggled and ready. Running "open_chests_state()"')
-        return open_chests_state(vm_index, logger, next_state)
+        return open_chests_state(controller, logger, next_state)
 
     if state == "level_up_chest":  # --> randomize_deck
         # keys for this state:
@@ -202,7 +193,7 @@ def state_tree(
         logger.log(
             'Level up chests is toggled and ready. Running "collect_level_up_chest_state()"'
         )
-        return collect_level_up_chest_state(vm_index, logger, next_state)
+        return collect_level_up_chest_state(controller, logger, next_state)
 
     if state == "randomize_deck":  # --> upgrade
         next_state = "upgrade"
@@ -219,7 +210,7 @@ def state_tree(
             logger.log("deck randomization isn't ready. skipping this state")
             return next_state
 
-        return randomize_deck_state(vm_index, logger, next_state)
+        return randomize_deck_state(controller, logger, next_state)
 
     if state == "upgrade":  # --> request
         next_state = "request"
@@ -237,7 +228,7 @@ def state_tree(
             return next_state
 
         # return output of this state
-        return upgrade_cards_state(vm_index, logger, next_state)
+        return upgrade_cards_state(controller, logger, next_state)
 
     if state == "request":  # --> donate
         next_state = "donate"
@@ -253,7 +244,7 @@ def state_tree(
             return next_state
 
         # return output of this state
-        return request_state(vm_index, logger, next_state)
+        return request_state(controller, logger, next_state)
 
     if state == "donate":  # --> shop_buy
         next_state = "shop_buy"
@@ -269,7 +260,7 @@ def state_tree(
             return next_state
 
         # return output of this state
-        return donate_cards_state(vm_index, logger, next_state)
+        return donate_cards_state(controller, logger, next_state)
 
     if state == "shop_buy":  # --> bannerbox
         next_state = "bannerbox"
@@ -289,7 +280,7 @@ def state_tree(
 
         # return output of this state
         return buy_shop_offers_state(
-            vm_index,
+            controller,
             logger,
             job_list["gold_offer_user_toggle"],
             job_list["free_offer_user_toggle"],
@@ -302,7 +293,7 @@ def state_tree(
             logger.log("Bannerbox job isn't toggled. Skipping")
             return next_state
 
-        return collect_bannerbox_rewards_state(vm_index, logger, next_state)
+        return collect_bannerbox_rewards_state(controller, logger, next_state)
 
     if state == "daily_rewards":  # --> battlepass_rewards
         next_state = "battlepass_rewards"
@@ -320,7 +311,7 @@ def state_tree(
             return next_state
 
         # run this job, return its output
-        return collect_daily_rewards_state(vm_index, logger, next_state)
+        return collect_daily_rewards_state(controller, logger, next_state)
 
     if state == "battlepass_rewards":  # --> card_mastery
         next_state = "card_mastery"
@@ -337,7 +328,7 @@ def state_tree(
             logger.change_status("Battlepass collect is not ready. Skipping this state")
             return next_state
 
-        return collect_battlepass_state(vm_index, logger, next_state)
+        return collect_battlepass_state(controller, logger, next_state)
 
     if state == "card_mastery":  # --> start_fight
         next_state = "start_fight"
@@ -355,7 +346,7 @@ def state_tree(
             return next_state
 
         # return output of this state
-        return card_mastery_state(vm_index, logger, next_state)
+        return card_mastery_state(controller, logger, next_state)
 
     if state == "start_fight":  # --> 1v1_fight, war
         next_state = "war"
@@ -380,7 +371,7 @@ def state_tree(
         if job_list["skip_fight_if_full_chests_user_toggle"]:
             if all(
                 chest_status == "available"
-                for chest_status in get_chest_statuses(vm_index)
+                for chest_status in get_chest_statuses(controller)
             ):
                 logger.change_status("All chests are available, skipping fight state")
                 return next_state
@@ -389,9 +380,9 @@ def state_tree(
         if _1v1_toggle and _2v2_toggle:
             logger.log("Both 1v1 and 2v2 are selected. Choosing the less used one")
             if logger.get_1v1_fights() < logger.get_2v2_fights():
-                return start_1v1_fight_state(vm_index, logger, mode=fight_mode)
+                return start_1v1_fight_state(controller, logger, mode=fight_mode)
 
-            return start_2v2_fight_state(vm_index, logger)
+            return start_2v2_fight_state(controller, logger)
 
         # if only 1v1 is toggled
         elif _1v1_toggle:
@@ -404,12 +395,12 @@ def state_tree(
 
             print(f"Fight mode is gonna be: {fight_mode}")
 
-            return start_1v1_fight_state(vm_index, logger, fight_mode)
+            return start_1v1_fight_state(controller, logger, fight_mode)
 
         # if only 2v2 is toggled
         elif _2v2_toggle:
             logger.log("2v2 is toggled")
-            return start_2v2_fight_state(vm_index, logger)
+            return start_2v2_fight_state(controller, logger)
 
         # if neither, go to NEXT_STATE
         logger.log("Neither 1v1 or 2v2 is toggled. Skipping this state")
@@ -426,7 +417,7 @@ def state_tree(
             f"This state: {state} took {str(time.time() - start_time)[:5]} seconds"
         )
 
-        return do_2v2_fight_state(vm_index, logger, next_state, random_fight_mode)
+        return do_2v2_fight_state(controller, logger, next_state, random_fight_mode)
 
     if state == "1v1_fight":  # --> end_fight
         next_state = "end_fight"
@@ -437,7 +428,7 @@ def state_tree(
         logger.log(
             f"This state: {state} took {str(time.time() - start_time)[:5]} seconds"
         )
-        return do_1v1_fight_state(vm_index, logger, next_state, random_fight_mode)
+        return do_1v1_fight_state(controller, logger, next_state, random_fight_mode)
 
     if state == "end_fight":  # --> war
         next_state = "war"
@@ -446,7 +437,7 @@ def state_tree(
             f"This state: {state} took {str(time.time() - start_time)[:5]} seconds"
         )
         return end_fight_state(
-            vm_index, logger, next_state, job_list["disable_win_track_toggle"]
+            controller, logger, next_state, job_list["disable_win_track_toggle"]
         )
 
     if state == "war":  # --> account_switch
@@ -463,13 +454,13 @@ def state_tree(
             return next_state
 
         # return output of this state
-        return war_state(vm_index, logger, next_state)
+        return war_state(controller, logger, next_state)
 
     logger.error("Failure in state tree")
     return "fail"
 
 
-def state_tree_tester(vm_index):
+def state_tree_tester(controller):
     logger = Logger()
     state = "account_switch"
     job_list = {
@@ -518,7 +509,7 @@ def state_tree_tester(vm_index):
 
     while 1:
         state = state_tree(
-            vm_index,
+            controller,
             logger,
             state,
             job_list,

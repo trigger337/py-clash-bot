@@ -8,7 +8,7 @@ from pyclashbot.detection.image_rec import (
     get_file_count,
     make_reference_image_list,
 )
-from pyclashbot.memu.client import screenshot
+from pyclashbot.emulator.base import BaseEmulatorController
 
 PLAY_COORDS = {
     "spell": {
@@ -42,8 +42,8 @@ PLAY_COORDS = {
 }
 
 
-def get_play_coords_for_card(vm_index: int, card_index: int, side_preference: str):
-    image = get_card_images(vm_index)[card_index]
+def get_play_coords_for_card(controller:BaseEmulatorController, card_index: int, side_preference: str):
+    image = get_card_images(controller)[card_index]
 
     # get the ID of this card(ram_rider, zap, etc)
     identity = identify_card(image)
@@ -130,8 +130,8 @@ def calculate_play_coords(card_grouping: str, side_preference: str):
     return (random.randint(210, 351), random.randint(281, 456))
 
 
-def get_card_images(vm_index):
-    whole_image = screenshot(vm_index)
+def get_card_images(controller):
+    whole_image = controller.screenshot()
 
     card_images = []
 

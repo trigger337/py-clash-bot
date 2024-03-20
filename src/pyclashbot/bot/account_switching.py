@@ -6,7 +6,7 @@ from pyclashbot.bot.nav import (
     handle_trophy_reward_menu,
     wait_for_clash_main_menu,
 )
-from pyclashbot.memu.client import click, custom_swipe
+from pyclashbot.emulator.base import BaseEmulatorController
 from pyclashbot.utils.logger import Logger
 
 
@@ -22,22 +22,22 @@ SSID_COORDS = [
 ]
 
 
-def switch_accounts(vm_index: int, logger: Logger, account_index_to_switch_to):
+def switch_accounts(controller:BaseEmulatorController, logger: Logger, account_index_to_switch_to):
     logger.add_switch_account_attempt()
 
     # if not on clash main, return False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status("293587 Not on clash main to do account switching")
         return False
 
     # click options burger
     logger.change_status("Opening clash main options menu")
-    click(vm_index, 386, 66)
+    controller.click(( 386, 66))
     time.sleep(3)
 
     # click switch SSID button
     logger.change_status("Clicking switch SSID button")
-    click(vm_index, 221, 368)
+    controller.click(( 221, 368))
 
     # wait for switch ssid page
     # wait_for_switch_ssid_page(vm_index, logger)
@@ -49,27 +49,27 @@ def switch_accounts(vm_index: int, logger: Logger, account_index_to_switch_to):
             f"Scrolling down to reach account #{account_index_to_switch_to}"
         )
         if account_index_to_switch_to == 5:  # 6th account
-            custom_swipe(vm_index, 215, 400, 215, 350, 2, 1)
+            controller.swipe((215, 400), (215, 350), 2, 1)
         elif account_index_to_switch_to == 6:  # 7th account
-            custom_swipe(vm_index, 215, 400, 215, 350, 4, 1)
+            controller.swipe( (215, 400), (215, 350), 4, 1)
         elif account_index_to_switch_to == 7:  # 8th account
-            custom_swipe(vm_index, 215, 400, 215, 350, 6, 1)
+            controller.swipe( (215, 400), (215, 350), 6, 1)
 
     # click the account index in question
     account_coord = SSID_COORDS[account_index_to_switch_to]
     logger.change_status(f"Clicking account index #{account_index_to_switch_to}")
-    click(vm_index, account_coord[0], account_coord[1], clicks=3, interval=0.33)
+    controller.click(account_coord, clicks=3, interval=0.33)
     logger.change_status(f"Selected account #{account_index_to_switch_to}")
 
     time.sleep(6)
 
     logger.change_status("Waiting for clash main on new account...")
-    if wait_for_clash_main_menu(vm_index, logger) is False:
+    if wait_for_clash_main_menu(controller, logger) is False:
         return False
     time.sleep(4)
 
-    if check_for_trophy_reward_menu(vm_index):
-        handle_trophy_reward_menu(vm_index, logger, printmode=False)
+    if check_for_trophy_reward_menu(controller):
+        handle_trophy_reward_menu(controller, logger, printmode=False)
         time.sleep(2)
 
     logger.change_status(f"Switched to account #{account_index_to_switch_to}")
@@ -77,5 +77,3 @@ def switch_accounts(vm_index: int, logger: Logger, account_index_to_switch_to):
     return True
 
 
-if __name__ == "__main__":
-    pass

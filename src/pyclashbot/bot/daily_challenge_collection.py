@@ -1,62 +1,63 @@
 from pyclashbot.bot.nav import check_if_on_clash_main_menu
 from pyclashbot.detection.image_rec import pixel_is_equal
+from pyclashbot.emulator.base import BaseEmulatorController
 from pyclashbot.utils.logger import Logger
-import numpy
-from pyclashbot.memu.client import screenshot, click
 import time
 
 
-def collect_daily_rewards_state(vm_index, logger, next_state):
-    if collect_all_daily_rewards(vm_index, logger) is False:
+def collect_daily_rewards_state(controller: BaseEmulatorController, logger, next_state):
+    if collect_all_daily_rewards(controller, logger) is False:
         logger.change_status("Failed to collect daily rewards")
         return "restart"
 
     return next_state
 
 
-def collect_challenge_rewards(vm_index, logger, rewards) -> bool:
+def collect_challenge_rewards(
+    controller: BaseEmulatorController, logger, rewards
+) -> bool:
     # if not on clash main, reutrn False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status(
             "Not on clash main at start of collect_challenge_rewards(). Returning False"
         )
         return False
 
     # open daily rewards menu
-    click(vm_index, 41, 206)
+    controller.click((41, 206))
     time.sleep(2)
 
     # click first task's reward
     if rewards[0]:
-        click(vm_index, 90, 191)
+        controller.click((90, 191))
         logger.change_status("Collected 1st daily challenge reward")
         logger.add_daily_reward()
         time.sleep(1)
 
         # click deadspace a few times
-        click(vm_index, 10, 450, clicks=5, interval=1)
+        controller.click((10, 450), clicks=5, interval=1)
 
         # reopen daily rewards menu
-        click(vm_index, 41, 206)
+        controller.click((41, 206))
         time.sleep(2)
 
     # click second task's reward
     if rewards[1]:
-        click(vm_index, 90, 260)
+        controller.click((90, 260))
         logger.change_status("Collected 2nd daily challenge reward")
         logger.add_daily_reward()
         time.sleep(1)
 
         # click deadspace a few times
-        click(vm_index, 10, 450, clicks=5, interval=1)
+        controller.click((10, 450), clicks=5, interval=1)
 
         # reopen daily rewards menu
-        click(vm_index, 41, 206)
+        controller.click((41, 206))
         time.sleep(2)
 
     # click third task's reward
     if rewards[2]:
-        click(vm_index, 90, 330)
+        controller.click((90, 330))
         logger.change_status("Collected 3rd daily challenge reward")
         logger.add_daily_reward()
         time.sleep(1)
@@ -65,10 +66,10 @@ def collect_challenge_rewards(vm_index, logger, rewards) -> bool:
     deadspace_clicks = 5
     if rewards[1]:
         deadspace_clicks = 15
-    click(vm_index, 15, 450, clicks=deadspace_clicks, interval=0.33)
+    controller.click((15, 450), clicks=deadspace_clicks, interval=0.33)
 
     # if not on clash main, reutrn False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status(
             "Not on clash main at start of collect_challenge_rewards(). Returning False"
         )
@@ -77,30 +78,30 @@ def collect_challenge_rewards(vm_index, logger, rewards) -> bool:
     return True
 
 
-def collect_daily_bonus(vm_index, logger) -> bool:
+def collect_daily_bonus(controller: BaseEmulatorController, logger) -> bool:
     # if not on clash main, retunr False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status(
             "Not on clash main at start of collect_daily_bonus(). Returning False"
         )
         return False
 
     # open daily rewards menu
-    click(vm_index, 41, 206)
+    controller.click((41, 206))
     time.sleep(2)
 
     # click the daily bonus reward
-    click(vm_index, 206, 415)
+    controller.click((206, 415))
     logger.add_daily_reward()
     logger.change_status("Collected daily reward chest")
     time.sleep(1)
 
     # click deadspace a bunch
     print("deadspace clicks")
-    click(vm_index, 10, 450, clicks=15, interval=1)
+    controller.click((10, 450), clicks=15, interval=1)
 
     # if not on clash main, retunr False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status(
             "Not on clash main at start of collect_daily_bonus(). Returning False"
         )
@@ -109,29 +110,29 @@ def collect_daily_bonus(vm_index, logger) -> bool:
     return True
 
 
-def collect_weekly_bonus(vm_index, logger: Logger) -> bool:
+def collect_weekly_bonus(controller: BaseEmulatorController, logger: Logger) -> bool:
     # if not on clash main, retunr False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status(
             "Not on clash main at start of collect_weekly_bonus(). Returning False"
         )
         return False
 
     # open daily rewards menu
-    click(vm_index, 41, 206)
+    controller.click((41, 206))
     time.sleep(2)
 
     # click the weekly bonus reward
-    click(vm_index, 197, 500)
+    controller.click((197, 500))
     logger.change_status("Collected weekly reward chest")
     logger.add_daily_reward()
     time.sleep(1)
 
     # click deadspace a bunch
-    click(vm_index, 15, 450, clicks=15, interval=0.33)
+    controller.click((15, 450), clicks=15, interval=0.33)
 
     # if not on clash main, retunr False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status(
             "Not on clash main at start of collect_weekly_bonus(). Returning False"
         )
@@ -140,8 +141,8 @@ def collect_weekly_bonus(vm_index, logger: Logger) -> bool:
     return True
 
 
-def check_if_daily_rewards_button_exists(vm_index) -> bool:
-    iar = numpy.asarray(screenshot(vm_index))
+def check_if_daily_rewards_button_exists(controller: BaseEmulatorController) -> bool:
+    iar = controller.screenshot()
     pixels = [
         iar[181][17],
         iar[210][48],
@@ -173,21 +174,21 @@ def check_if_daily_rewards_button_exists(vm_index) -> bool:
     return False
 
 
-def collect_all_daily_rewards(vm_index, logger) -> bool:
+def collect_all_daily_rewards(controller: BaseEmulatorController, logger) -> bool:
     # if not on clash main, reutrn False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status(
             "Not on clash main at start of collect_daily_rewards(). Returning False"
         )
         return False
 
     # if daily rewards button doesnt exist, reutnr True
-    if not check_if_daily_rewards_button_exists(vm_index):
+    if not check_if_daily_rewards_button_exists(controller):
         logger.change_status("Daily rewards button doesn't exist")
         return True
 
     # check which rewards are available
-    rewards = check_which_rewards_are_available(vm_index, logger)
+    rewards = check_which_rewards_are_available(controller, logger)
     if rewards is False:
         logger.change_status(
             "Error no1919 Failed with check_which_rewards_are_available()"
@@ -197,47 +198,47 @@ def collect_all_daily_rewards(vm_index, logger) -> bool:
 
     # collect the basic 3 daily rewards for completing tasks
     if rewards[0] or rewards[1] or rewards[2]:
-        if collect_challenge_rewards(vm_index, logger, rewards) is False:
+        if collect_challenge_rewards(controller, logger, rewards) is False:
             logger.change_status("Failed to collect challenge rewards")
             return False
 
     # collect the daily bonus reward if it exists
-    if rewards[3] and collect_daily_bonus(vm_index, logger) is False:
+    if rewards[3] and collect_daily_bonus(controller, logger) is False:
         logger.change_status("Failed to collect daily bonus reward")
         return False
 
     # collect the weekly bonus reward if it exists
-    if rewards[4] and collect_weekly_bonus(vm_index, logger) is False:
+    if rewards[4] and collect_weekly_bonus(controller, logger) is False:
         logger.change_status("Failed to collect weekly bonus reward")
         return False
 
     return True
 
 
-def check_which_rewards_are_available(vm_index, logger):
+def check_which_rewards_are_available(controller: BaseEmulatorController, logger):
     logger.change_status("Checking which daily rewards are available")
 
     # if not on clash main, return False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         time.sleep(3)
-        if check_if_on_clash_main_menu(vm_index) is not True:
+        if check_if_on_clash_main_menu(controller) is not True:
             logger.change_status(
                 "Not on clash main before check_which_rewards_are_available() "
             )
 
     # open daily rewards menu
-    click(vm_index, 41, 206)
+    controller.click((41, 206))
     time.sleep(2)
 
     # check which rewards are available
-    rewards = check_rewards_menu_pixels(vm_index)
+    rewards = check_rewards_menu_pixels(controller)
 
     # click deadspace a bunch
-    click(vm_index, 15, 450, clicks=3, interval=0.33)
+    controller.click((15, 450), clicks=3, interval=0.33)
     time.sleep(2)
 
     # if not on clash main, return False
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status(
             "Not on clash main after check_which_rewards_are_available()"
         )
@@ -252,8 +253,8 @@ def check_which_rewards_are_available(vm_index, logger):
     return rewards
 
 
-def check_rewards_menu_pixels(vm_index):
-    iar = numpy.asarray(screenshot(vm_index))
+def check_rewards_menu_pixels(controller: BaseEmulatorController):
+    iar = controller.screenshot()
     pixels = [
         iar[206][117],
         iar[273][112],
@@ -277,9 +278,3 @@ def check_rewards_menu_pixels(vm_index):
         bool_list.append(not this_bool)
 
     return bool_list
-
-
-if __name__ == "__main__":
-    bs = check_rewards_menu_pixels(12)
-    for b in bs:
-        print(b)

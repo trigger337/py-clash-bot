@@ -19,24 +19,12 @@ from pyclashbot.detection.image_rec import (
     pixel_is_equal,
     region_is_color,
 )
-from pyclashbot.memu.client import (
-    click,
-    screenshot,
-    scroll_down_in_request_page,
-)
+from pyclashbot.emulator.base import BaseEmulatorController
 from pyclashbot.utils.logger import Logger
+from pyclashbot.emulator.base import BaseEmulatorController
 
 
-def find_request_button(vm_index):
-    """
-    Finds the location of the request button on the screen.
-
-    Args:
-        vm_index (int): The index of the virtual machine to search for the request button.
-
-    Returns:
-        list[int] or None: The coordinates of the request button if found, or None if not found.
-    """
+def find_request_button(controller: BaseEmulatorController):
     folder_name = "request_button"
 
     size: int = get_file_count(folder_name)
@@ -44,7 +32,7 @@ def find_request_button(vm_index):
     names = make_reference_image_list(size)
 
     locations = find_references(
-        screenshot(vm_index),
+        controller.screenshot(),
         folder_name,
         names,
         0.88,
@@ -56,7 +44,9 @@ def find_request_button(vm_index):
     return [coord[1], coord[0]]
 
 
-def request_state(vm_index, logger: Logger, next_state: str) -> str:
+def request_state(
+    controller: BaseEmulatorController, logger: Logger, next_state: str
+) -> str:
     """
     The request state of the bot. This state is responsible for checking if the bot is in a clan,
     checking if a request can be made, and making a request if possible.
@@ -73,7 +63,7 @@ def request_state(vm_index, logger: Logger, next_state: str) -> str:
     logger.add_request_attempt()
 
     # if not on main: return
-    clash_main_check = check_if_on_clash_main_menu(vm_index)
+    clash_main_check = check_if_on_clash_main_menu(controller)
     if clash_main_check is not True:
         logger.change_status("Not on clash main for the start of request_state()")
         logger.log("These are the pixels the bot saw after failing to find clash main:")
@@ -84,7 +74,7 @@ def request_state(vm_index, logger: Logger, next_state: str) -> str:
 
     # if not in a clan, return
     logger.change_status("Checking if in a clan before requesting")
-    in_a_clan_return = request_state_check_if_in_a_clan(vm_index, logger)
+    in_a_clan_return = request_state_check_if_in_a_clan(controller, logger)
     if in_a_clan_return == "restart":
         logger.change_status(status="Error 05708425 Failure with check_if_in_a_clan")
         return "restart"
@@ -94,87 +84,93 @@ def request_state(vm_index, logger: Logger, next_state: str) -> str:
 
     # get to clan page
     logger.change_status("Getting to clan tab to request a card")
-    if get_to_clan_tab_from_clash_main(vm_index, logger) == "restart":
+    if get_to_clan_tab_from_clash_main(controller, logger) == "restart":
         logger.change_status(status="ERROR 74842744443 Not on clan tab")
         return "restart"
 
     logger.update_time_of_last_request(time.time())
 
     # check if request exists
-    if check_if_can_request_wrapper(vm_index):
+    if check_if_can_request_wrapper(controller):
         # do request
-        if not do_request(vm_index, logger):
+        if not do_request(controller, logger):
             return "restart"
     else:
         logger.change_status(status="Can't request right now.")
 
     # click clash main icon
-    click(vm_index, 178, 593)
+    controller.click((178, 593))
 
     # return to clash main
-    wait_for_clash_main_menu(vm_index, logger, deadspace_click=False)
+    wait_for_clash_main_menu(controller, logger, deadspace_click=False)
 
     return next_state
 
 
-def do_random_scrolling_in_request_page(vm_index, logger, scrolls) -> None:
+def do_random_scrolling_in_request_page(
+    controller: BaseEmulatorController, logger, scrolls
+) -> None:
     logger.change_status(status="Doing random scrolling in request page")
     for _ in range(scrolls):
-        scroll_down_in_request_page(vm_index)
+        controller.swipe((43, 350), (43, 280))
+        controller.swipe((100, 385), (330, 385))
         time.sleep(1)
     logger.change_status(status="Done with random scrolling in request page")
 
 
-def count_scrolls_in_request_page(vm_index) -> int:
+def count_scrolls_in_request_page(controller: BaseEmulatorController) -> int:
     # scroll down, counting each scroll, until can't scroll anymore
     scrolls = 0
-    while check_if_can_scroll_in_request_page(vm_index):
+    while check_if_can_scroll_in_request_page(controller):
         print(f"One scroll down. Count is {scrolls}")
-        scroll_down_in_request_page(vm_index)
+        controller.swipe((43, 350), (43, 280))
+        controller.swipe((100, 385), (330, 385))
         scrolls += 1
         time.sleep(1)
 
     # close request screen with deadspace click
-    click(vm_index, 15, 300, clicks=3, interval=1)
+    controller.click((15, 300), clicks=3, interval=1)
 
     # reopen request page
-    click(vm_index=vm_index, x_coord=77, y_coord=536)
+    controller.click((77, 536))
     time.sleep(0.1)
 
     return scrolls
 
 
-def check_if_can_scroll_in_request_page(vm_index) -> bool:
-    if not region_is_color(vm_index, region=[64, 500, 293, 55], color=(222, 235, 241)):
+def check_if_can_scroll_in_request_page(controller: BaseEmulatorController) -> bool:
+    if not region_is_color(
+        controller, region=[64, 500, 293, 55], color=(222, 235, 241)
+    ):
         return True
     return False
 
 
 def request_state_check_if_in_a_clan(
-    vm_index, logger: Logger
+    controller: BaseEmulatorController, logger: Logger
 ) -> bool | Literal["restart"]:
     # if not on clash main, reutnr
-    if check_if_on_clash_main_menu(vm_index) is not True:
+    if check_if_on_clash_main_menu(controller) is not True:
         logger.change_status(status="ERROR 385462623 Not on clash main menu")
         return "restart"
 
     # get to profile page
-    if get_to_profile_page(vm_index, logger) == "restart":
+    if get_to_profile_page(controller, logger) == "restart":
         logger.change_status(
             status="Error 9076092860923485 Failure with get_to_profile_page"
         )
         return "restart"
 
     # check pixels for in a clan
-    in_a_clan = request_state_check_pixels_for_clan_flag(vm_index)
+    in_a_clan = request_state_check_pixels_for_clan_flag(controller)
 
     # print clan status
     if not in_a_clan:
         logger.change_status("Not in a clan, so can't request!")
 
     # click deadspace to leave
-    click(vm_index, 15, 300)
-    if wait_for_clash_main_menu(vm_index, logger) is False:
+    controller.click((15, 300))
+    if wait_for_clash_main_menu(controller, logger) is False:
         logger.change_status(
             status="Error 87258301758939 Failure with wait_for_clash_main_menu"
         )
@@ -183,8 +179,10 @@ def request_state_check_if_in_a_clan(
     return in_a_clan
 
 
-def request_state_check_pixels_for_clan_flag(vm_index) -> bool:
-    iar = numpy.asarray(screenshot(vm_index))  # type: ignore
+def request_state_check_pixels_for_clan_flag(
+    controller: BaseEmulatorController,
+) -> bool:
+    iar = controller.screenshot()
 
     pix_list = []
     for x_coord in range(80, 96):
@@ -211,23 +209,23 @@ def request_state_check_pixels_for_clan_flag(vm_index) -> bool:
     return False
 
 
-def do_request(vm_index, logger: Logger) -> None:
+def do_request(controller: BaseEmulatorController, logger: Logger) -> None:
     logger.change_status(status="Doing request")
 
     # click request button
     logger.change_status(status="Clicking request button")
-    click(vm_index=vm_index, x_coord=77, y_coord=536)
+    controller.click((77, 536))
     time.sleep(3)
 
     # max scrolls
     logger.change_status(status="Counting the maximum scrolls in the request page")
-    max_scrolls: int = count_scrolls_in_request_page(vm_index=vm_index)
+    max_scrolls: int = count_scrolls_in_request_page(controller)
     logger.log(f"Found {max_scrolls} scrolls maximum in request page")
     random_scroll_amount: int = random.randint(a=0, b=max_scrolls)
     logger.log(f"Gonna do {random_scroll_amount} scrolls in request page")
 
     do_random_scrolling_in_request_page(
-        vm_index=vm_index, logger=logger, scrolls=random_scroll_amount
+        controller, logger=logger, scrolls=random_scroll_amount
     )
 
     random_click_timeout = 35  # s
@@ -242,22 +240,20 @@ def do_request(vm_index, logger: Logger) -> None:
 
         # click card
         logger.change_status(status="Clicking random card to request")
-        click(
-            vm_index=vm_index,
-            x_coord=random.randint(a=67, b=358),
-            y_coord=random.randint(a=211, b=547),
+        controller.click(
+            (random.randint(a=67, b=358), random.randint(a=211, b=547)),
         )
         time.sleep(3)
 
         logger.change_status(status="Clicking request")
 
         # get request button coord
-        coord = find_request_button(vm_index)
+        coord = find_request_button(controller)
         if coord is None:
             continue
 
         # Click request button coord
-        click(vm_index, coord[0], coord[1])
+        controller.click(coord)
 
         prev_requests = logger.get_requests()
 
@@ -272,33 +268,33 @@ def do_request(vm_index, logger: Logger) -> None:
     return True
 
 
-def check_if_can_request_wrapper(vm_index) -> bool:
-    if check_for_epic_sunday_icon_with_delay(vm_index, 3):
+def check_if_can_request_wrapper(controller: BaseEmulatorController) -> bool:
+    if check_for_epic_sunday_icon_with_delay(controller, 3):
         print("Detected epic sunday icon")
         return True
 
-    if check_for_trade_cards_icon(vm_index):
+    if check_for_trade_cards_icon(controller):
         print("Detected trade cards icon")
         return False
 
-    if check_for_trade_cards_icon_2(vm_index):
+    if check_for_trade_cards_icon_2(controller):
         print("Detected trade cards icon")
         return False
 
-    if check_if_can_request_3(vm_index):
+    if check_if_can_request_3(controller):
         return True
 
-    if check_if_can_request(vm_index):
+    if check_if_can_request(controller):
         return True
 
-    if check_if_can_request_2(vm_index):
+    if check_if_can_request_2(controller):
         return True
 
     return False
 
 
-def check_if_can_request(vm_index) -> bool:
-    iar = numpy.asarray(screenshot(vm_index))
+def check_if_can_request(controller: BaseEmulatorController) -> bool:
+    iar = controller.screenshot()
 
     region_is_white = True
     for x_index in range(48, 55):
@@ -325,17 +321,17 @@ def check_if_can_request(vm_index) -> bool:
     return False
 
 
-def check_for_epic_sunday_icon_with_delay(vm_index, delay):
+def check_for_epic_sunday_icon_with_delay(controller: BaseEmulatorController, delay):
     start_time = time.time()
     while time.time() - start_time < delay:
-        if check_for_epic_sunday_icon(vm_index):
+        if check_for_epic_sunday_icon(controller):
             return True
         time.sleep(1)
     return False
 
 
-def check_for_epic_sunday_icon(vm_index):
-    iar = numpy.asarray(screenshot(vm_index))
+def check_for_epic_sunday_icon(controller: BaseEmulatorController):
+    iar = controller.screenshot()
     pixels = [
         iar[507][43],
         iar[508][120],
@@ -352,65 +348,59 @@ def check_for_epic_sunday_icon(vm_index):
     return True
 
 
-def check_if_can_request_2(vm_index) -> bool:
-    if not check_line_for_color(vm_index, 300, 522, 300, 544, (76, 176, 255)):
+def check_if_can_request_2(controller: BaseEmulatorController) -> bool:
+    if not check_line_for_color(controller, 300, 522, 300, 544, (76, 176, 255)):
         return False
-    if not check_line_for_color(vm_index, 362, 522, 362, 544, (76, 174, 255)):
+    if not check_line_for_color(controller, 362, 522, 362, 544, (76, 174, 255)):
         return False
-    if not check_line_for_color(vm_index, 106, 537, 106, 545, (255, 188, 42)):
+    if not check_line_for_color(controller, 106, 537, 106, 545, (255, 188, 42)):
         return False
-    if not check_line_for_color(vm_index, 107, 537, 119, 545, (255, 188, 42)):
+    if not check_line_for_color(controller, 107, 537, 119, 545, (255, 188, 42)):
         return False
-    if not check_line_for_color(vm_index, 46, 529, 57, 539, (178, 79, 244)):
+    if not check_line_for_color(controller, 46, 529, 57, 539, (178, 79, 244)):
         return False
-    if not check_line_for_color(vm_index, 50, 540, 54, 527, (176, 79, 244)):
+    if not check_line_for_color(controller, 50, 540, 54, 527, (176, 79, 244)):
         return False
     return True
 
 
-def check_for_trade_cards_icon(vm_index) -> bool:
+def check_for_trade_cards_icon(controller: BaseEmulatorController) -> bool:
     lines = [
         check_line_for_color(
-            vm_index, x_1=33, y_1=502, x_2=56, y_2=502, color=(47, 69, 105)
+            controller, x_1=33, y_1=502, x_2=56, y_2=502, color=(47, 69, 105)
         ),
         check_line_for_color(
-            vm_index, x_1=56, y_1=507, x_2=108, y_2=506, color=(253, 253, 203)
+            controller, x_1=56, y_1=507, x_2=108, y_2=506, color=(253, 253, 203)
         ),
         check_line_for_color(
-            vm_index, x_1=37, y_1=515, x_2=125, y_2=557, color=(255, 188, 42)
+            controller, x_1=37, y_1=515, x_2=125, y_2=557, color=(255, 188, 42)
         ),
     ]
 
     return all(lines)
 
 
-def check_for_trade_cards_icon_2(vm_index):
-    if not check_line_for_color(vm_index, 67, 524, 74, 534, (255, 255, 254)):
+def check_for_trade_cards_icon_2(controller: BaseEmulatorController):
+    if not check_line_for_color(controller, 67, 524, 74, 534, (255, 255, 254)):
         return False
-    if not check_line_for_color(vm_index, 90, 523, 91, 534, (255, 255, 254)):
+    if not check_line_for_color(controller, 90, 523, 91, 534, (255, 255, 254)):
         return False
-    if not check_line_for_color(vm_index, 97, 536, 102, 543, (255, 253, 250)):
+    if not check_line_for_color(controller, 97, 536, 102, 543, (255, 253, 250)):
         return False
 
-    if not region_is_color(vm_index, [50, 530, 4, 8], (212, 228, 255)):
+    if not region_is_color(controller, [50, 530, 4, 8], (212, 228, 255)):
         return False
-    if not region_is_color(vm_index, [106, 523, 4, 8], (255, 200, 80)):
+    if not region_is_color(controller, [106, 523, 4, 8], (255, 200, 80)):
         return False
-    if not region_is_color(vm_index, [104, 536, 12, 8], (255, 188, 42)):
+    if not region_is_color(controller, [104, 536, 12, 8], (255, 188, 42)):
         return False
     return True
 
 
-def check_if_can_request_3(vm_index):
-    if not region_is_color(vm_index, [48, 529, 8, 7], (216, 229, 255)):
+def check_if_can_request_3(controller: BaseEmulatorController):
+    if not region_is_color(controller, [48, 529, 8, 7], (216, 229, 255)):
         return False
-    if not region_is_color(vm_index, [106, 538, 12, 7], (255, 188, 42)):
+    if not region_is_color(controller, [106, 538, 12, 7], (255, 188, 42)):
         return False
 
     return True
-
-
-if __name__ == "__main__":
-    # vm_index = 12
-    # logger = Logger(None)
-    pass
