@@ -29,10 +29,10 @@ from pyclashbot.bot.buy_shop_offers import buy_shop_offers_state
 from pyclashbot.utils.logger import Logger
 from pyclashbot.bot.daily_challenge_collection import collect_daily_rewards_state
 from pyclashbot.memu.docker import start_memu_dock_mode
-
+from pyclashbot.emulator.base import BaseEmulatorController
 
 def state_tree(
-    vm_index,
+    controller: BaseEmulatorController,
     logger: Logger,
     state,
     job_list,
@@ -82,7 +82,7 @@ def state_tree(
 
         # close app
         logger.log("Running close_clash_royale_app()")
-        close_clash_royale_app(logger, vm_index)
+        controller.close_app()
         logger.log("Manual sleep of 10 sec after closing app")
         time.sleep(10)
 
@@ -91,7 +91,7 @@ def state_tree(
 
         # start app
         logger.log("Starting clash app again")
-        start_clash_royale(logger, vm_index)
+        constroller.start_app()
 
         # wait for clash main
         logger.change_status("Waiting for clash royale main menu")
